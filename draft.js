@@ -198,11 +198,16 @@ module.exports = function(config = {}) {
           const milliseconds = Math.round((end[0] * 1000) + (end[1] / 1000000));
           response.headers['request-duration'] = milliseconds;
           return response;
-      });    
+      });
 
       return new Promise(async(resolve, reject) => {
           const cookies = {};
-          const browser = await puppeteer.launch();
+          const browser = await puppeteer.launch({
+            args: [
+              '--no-sandbox',
+              '--disable-setuid-sandbox',
+            ],
+          });
           const page = await browser.newPage();
 
           await page.goto("https://profile.callofduty.com/cod/login");
@@ -601,7 +606,7 @@ module.exports = function(config = {}) {
             _helpers.sendRequest(urlInput).then(data => resolve(data)).catch(e => reject(e));
         });
     };
-    
+
     module.CWloot = function(gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
@@ -613,7 +618,7 @@ module.exports = function(config = {}) {
             _helpers.sendRequest(urlInput).then(data => resolve(data)).catch(e => reject(e));
         });
     };
-    
+
     module.CWAnalysis = function(gamertag, platform = config.platform) {  //could be v1
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
@@ -623,7 +628,7 @@ module.exports = function(config = {}) {
             _helpers.sendRequest(urlInput).then(data => resolve(data)).catch(e => reject(e));
         });
     };
-    
+
     module.CWMapList = function(platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
@@ -653,7 +658,7 @@ module.exports = function(config = {}) {
             _helpers.sendRequest(urlInput).then(data => resolve(data)).catch(e => reject(e));
         });
     };
-    
+
     module.CWFullMatchInfo = function(matchId, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
@@ -753,7 +758,7 @@ module.exports = function(config = {}) {
             _helpers.sendRequest(urlInput).then(data => resolve(data)).catch(e => reject(e));
         });
     };
-    
+
     module.purchaseItem = function(gamertag, item = "battle_pass_upgrade_bundle_4", platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
@@ -810,7 +815,7 @@ module.exports = function(config = {}) {
             _helpers.sendRequest(urlInput).then(data => resolve(data)).catch(e => reject(e));
         });
     };
-    
+
     module.isLoggedIn = function() {
         return loggedIn;
     };
