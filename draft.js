@@ -6,7 +6,7 @@ const rateLimit = require('axios-rate-limit');
 
 const userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36w";
 let baseCookie = "new_SiteId=cod; ACT_SSO_LOCALE=en_US;country=US;";
-let ssoCookie;  // TODO: Not sure where to get this from now
+let ssoCookie; // TODO: Not sure where to get this from now
 let loggedIn = false;
 let debug = 0;
 
@@ -72,7 +72,9 @@ class helpers {
                 if (response.data.status !== undefined && response.data.status === 'success') {
                     resolve(response.data.data);
                 } else {
-                    reject(this.apiErrorHandling({response: response}));
+                    reject(this.apiErrorHandling({
+                        response: response
+                    }));
                 }
             }).catch((error) => {
                 reject(this.apiErrorHandling(error));
@@ -93,7 +95,9 @@ class helpers {
                 if (response.data.status !== undefined && response.data.status === 'success') {
                     resolve(response.data.data);
                 } else {
-                    reject(this.apiErrorHandling({response: response}));
+                    reject(this.apiErrorHandling({
+                        response: response
+                    }));
                 }
             }).catch((error) => {
                 reject(this.apiErrorHandling(error));
@@ -149,7 +153,7 @@ class helpers {
     }
 }
 
-module.exports = function(config = {}) {
+module.exports = function (config = {}) {
     var module = {};
     if (config.platform == undefined) config.platform = "psn";
 
@@ -186,52 +190,48 @@ module.exports = function(config = {}) {
         all: "all"
     };
 
-    module.login = function(username, password) {
+    module.login = function (username, password) {
+        return new Promise(async (resolve, reject) => {
 
-      loginAxios.interceptors.request.use((resp) => {
-          resp.headers['request-startTime'] = process.hrtime();
-          return resp;
-      });
-      loginAxios.interceptors.response.use((response) => {
-          const start = response.config.headers['request-startTime'];
-          const end = process.hrtime(start);
-          const milliseconds = Math.round((end[0] * 1000) + (end[1] / 1000000));
-          response.headers['request-duration'] = milliseconds;
-          return response;
-      });
+            const sharedCookieJar = new tough.CookieJar();
+            apiAxios.defaults.jar = sharedCookieJar;
+            loginAxios.defaults.jar = sharedCookieJar;
 
-      return new Promise(async(resolve, reject) => {
-          const cookies = {};
-          const browser = await puppeteer.launch({
-            args: [
-              '--no-sandbox',
-              '--disable-setuid-sandbox',
-            ],
-          });
-          const page = await browser.newPage();
+            const cookies = {};
+            const browser = await puppeteer.launch();
+            const page = await browser.newPage();
 
-          await page.goto("https://profile.callofduty.com/cod/login");
+            await page.goto("https://profile.callofduty.com/cod/login");
 
-          await new Promise(w => setTimeout(w, 500));
+            await new Promise(w => setTimeout(w, 500));
 
-          const allCookies = await page._client.send('Network.getAllCookies');
+            const allCookies = await page._client.send('Network.getAllCookies');
 
-          allCookies.cookies.forEach((c) => {
-              cookies[c.name] = c.value;
-          });
+            allCookies.cookies.forEach((c) => {
+                cookies[c.name] = c.value;
+            });
 
-          loginAxios.defaults.headers.common["content-type"] = "application/x-www-form-urlencoded";
-          let data = new URLSearchParams({ username: encodeURIComponent(username), password, remember_me: true, _csrf: cookies["XSRF-TOKEN"] });
-          data = decodeURIComponent(data);
-            loginAxios.post('https://profile.callofduty.com/do_login', data, { headers: { 'cookie': `${Object.keys(cookies).map(name => `${name}=${cookies[name]}`).join(';')}` }}).then((response) => {
-              apiAxios.defaults.headers.common["cookie"] = `XSRF-TOKEN=${cookies['XSRF-TOKEN']};bm_sz=${cookies["bm_sz"]};new_SiteId=cod;comid=cod;`;
-              loggedIn = true;
-              resolve("done");
-          }).catch(reject);
-      });
+            loginAxios.defaults.headers.common["content-type"] = "application/x-www-form-urlencoded";
+            let data = new URLSearchParams({
+                username: encodeURIComponent(username),
+                password,
+                remember_me: true,
+                _csrf: cookies["XSRF-TOKEN"]
+            });
+            data = decodeURIComponent(data);
+            loginAxios.post('https://profile.callofduty.com/do_login', data, {
+                headers: {
+                    'cookie': `${Object.keys(cookies).map(name => `${name}=${cookies[name]}`).join(';')}`
+                }
+            }).then(() => {
+                apiAxios.defaults.headers.common["cookie"] = `XSRF-TOKEN=${cookies['XSRF-TOKEN']};bm_sz=${cookies["bm_sz"]};new_SiteId=cod;comid=cod;`;
+                loggedIn = true;
+                resolve("done");
+            }).catch(reject);
+        });
     }
 
-    module.BO4Stats = function(gamertag, platform = config.platform) {
+    module.BO4Stats = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for BO4. Try `battle` instead.");
             if (platform === "battle") gamertag = _helpers.cleanClientName(gamertag);
@@ -240,7 +240,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.BO4zm = function(gamertag, platform = config.platform) {
+    module.BO4zm = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for BO4. Try `battle` instead.");
             if (platform === "battle") gamertag = _helpers.cleanClientName(gamertag);
@@ -249,7 +249,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.BO4mp = function(gamertag, platform = config.platform) {
+    module.BO4mp = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for BO4. Try `battle` instead.");
             if (platform === "battle") gamertag = _helpers.cleanClientName(gamertag);
@@ -258,7 +258,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.BO4blackout = function(gamertag, platform = config.platform) {
+    module.BO4blackout = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for BO4. Try `battle` instead.");
             if (platform === "battle") gamertag = _helpers.cleanClientName(gamertag);
@@ -267,7 +267,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.BO4friends = function(gamertag, platform = config.platform) {
+    module.BO4friends = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for BO4. Try `battle` instead.");
             if (platform === "battle") reject("Battlenet does not support Friends.");
@@ -276,7 +276,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.BO4combatmp = function(gamertag, platform = config.platform) {
+    module.BO4combatmp = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for BO4. Try `battle` instead.");
             if (platform === "battle") gamertag = _helpers.cleanClientName(gamertag);
@@ -285,7 +285,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.BO4combatmpdate = function(gamertag, start = 0, end = 0, platform = config.platform) {
+    module.BO4combatmpdate = function (gamertag, start = 0, end = 0, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for BO4. Try `battle` instead.");
             if (platform === "battle") gamertag = _helpers.cleanClientName(gamertag);
@@ -294,7 +294,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.BO4combatzm = function(gamertag, platform = config.platform) {
+    module.BO4combatzm = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for BO4. Try `battle` instead.");
             if (platform === "battle") gamertag = _helpers.cleanClientName(gamertag);
@@ -303,7 +303,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.BO4combatzmdate = function(gamertag, start = 0, end = 0, platform = config.platform) {
+    module.BO4combatzmdate = function (gamertag, start = 0, end = 0, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for BO4. Try `battle` instead.");
             if (platform === "battle") gamertag = _helpers.cleanClientName(gamertag);
@@ -312,7 +312,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.BO4combatbo = function(gamertag, platform = config.platform) {
+    module.BO4combatbo = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for BO4. Try `battle` instead.");
             if (platform === "battle") gamertag = _helpers.cleanClientName(gamertag);
@@ -321,7 +321,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.BO4combatbodate = function(gamertag, start = 0, end = 0, platform = config.platform) {
+    module.BO4combatbodate = function (gamertag, start = 0, end = 0, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for BO4. Try `battle` instead.");
             if (platform === "battle") gamertag = _helpers.cleanClientName(gamertag);
@@ -330,7 +330,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.BO4leaderboard = function(page, platform = config.platform) {
+    module.BO4leaderboard = function (page, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for BO4. Try `battle` instead.");
             let urlInput = _helpers.buildUri(`leaderboards/v2/title/bo4/platform/${platform}/time/alltime/type/core/mode/career/page/${page}`);
@@ -338,7 +338,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWleaderboard = function(page, platform = config.platform) {
+    module.MWleaderboard = function (page, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
             let urlInput = _helpers.buildUri(`leaderboards/v2/title/mw/platform/${platform}/time/alltime/type/core/mode/career/page/${page}`);
@@ -346,10 +346,11 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWcombatmp = function(gamertag, platform = config.platform) {
+    module.MWcombatmp = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
-            gamertag = _helpers.cleanClientName(gamertag);let lookupType = "gamer";
+            gamertag = _helpers.cleanClientName(gamertag);
+            let lookupType = "gamer";
             if (platform === "uno") lookupType = "id";
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             let urlInput = _helpers.buildUri(`crm/cod/v2/title/mw/platform/${platform}/${lookupType}/${gamertag}/matches/mp/start/0/end/0/details`);
@@ -357,10 +358,11 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWcombatmpdate = function(gamertag, start = 0, end = 0, platform = config.platform) {
+    module.MWcombatmpdate = function (gamertag, start = 0, end = 0, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
-            gamertag = _helpers.cleanClientName(gamertag);let lookupType = "gamer";
+            gamertag = _helpers.cleanClientName(gamertag);
+            let lookupType = "gamer";
             if (platform === "uno") lookupType = "id";
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             let urlInput = _helpers.buildUri(`crm/cod/v2/title/mw/platform/${platform}/${lookupType}/${gamertag}/matches/mp/start/${start}/end/${end}/details`);
@@ -368,10 +370,11 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWcombatwz = function(gamertag, platform = config.platform) {
+    module.MWcombatwz = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
-            gamertag = _helpers.cleanClientName(gamertag);let lookupType = "gamer";
+            gamertag = _helpers.cleanClientName(gamertag);
+            let lookupType = "gamer";
             if (platform === "uno") lookupType = "id";
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             let urlInput = _helpers.buildUri(`crm/cod/v2/title/mw/platform/${platform}/${lookupType}/${gamertag}/matches/wz/start/0/end/0/details`);
@@ -379,10 +382,11 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWcombatwzdate = function(gamertag, start = 0, end = 0, platform = config.platform) {
+    module.MWcombatwzdate = function (gamertag, start = 0, end = 0, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
-            gamertag = _helpers.cleanClientName(gamertag);let lookupType = "gamer";
+            gamertag = _helpers.cleanClientName(gamertag);
+            let lookupType = "gamer";
             if (platform === "uno") lookupType = "id";
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             let urlInput = _helpers.buildUri(`crm/cod/v2/title/mw/platform/${platform}/${lookupType}/${gamertag}/matches/wz/start/${start}/end/${end}/details`);
@@ -390,10 +394,11 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWfullcombatmp = function(gamertag, platform = config.platform) {
+    module.MWfullcombatmp = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
-            gamertag = _helpers.cleanClientName(gamertag);let lookupType = "gamer";
+            gamertag = _helpers.cleanClientName(gamertag);
+            let lookupType = "gamer";
             if (platform === "uno") lookupType = "id";
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             let urlInput = _helpers.buildUri(`crm/cod/v2/title/mw/platform/${platform}/${lookupType}/${gamertag}/matches/mp/start/0/end/0`);
@@ -401,10 +406,11 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWfullcombatmpdate = function(gamertag, start = 0, end = 0, platform = config.platform) {
+    module.MWfullcombatmpdate = function (gamertag, start = 0, end = 0, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
-            gamertag = _helpers.cleanClientName(gamertag);let lookupType = "gamer";
+            gamertag = _helpers.cleanClientName(gamertag);
+            let lookupType = "gamer";
             if (platform === "uno") lookupType = "id";
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             let urlInput = _helpers.buildUri(`crm/cod/v2/title/mw/platform/${platform}/${lookupType}/${gamertag}/matches/mp/start/${start}/end/${end}`);
@@ -412,10 +418,11 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWfullcombatwz = function(gamertag, platform = config.platform) {
+    module.MWfullcombatwz = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
-            gamertag = _helpers.cleanClientName(gamertag);let lookupType = "gamer";
+            gamertag = _helpers.cleanClientName(gamertag);
+            let lookupType = "gamer";
             if (platform === "uno") lookupType = "id";
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             let urlInput = _helpers.buildUri(`crm/cod/v2/title/mw/platform/${platform}/${lookupType}/${gamertag}/matches/wz/start/0/end/0`);
@@ -423,10 +430,11 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWfullcombatwzdate = function(gamertag, start = 0, end = 0, platform = config.platform) {
+    module.MWfullcombatwzdate = function (gamertag, start = 0, end = 0, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
-            gamertag = _helpers.cleanClientName(gamertag);let lookupType = "gamer";
+            gamertag = _helpers.cleanClientName(gamertag);
+            let lookupType = "gamer";
             if (platform === "uno") lookupType = "id";
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             let urlInput = _helpers.buildUri(`crm/cod/v2/title/mw/platform/${platform}/${lookupType}/${gamertag}/matches/wz/start/${start}/end/${end}`);
@@ -434,7 +442,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWmp = function(gamertag, platform = config.platform) {
+    module.MWmp = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
             gamertag = _helpers.cleanClientName(gamertag);
@@ -446,7 +454,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWwz = function(gamertag, platform = config.platform) {
+    module.MWwz = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
             gamertag = _helpers.cleanClientName(gamertag);
@@ -458,7 +466,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWBattleData = function(gamertag, platform = config.platform) {
+    module.MWBattleData = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             brDetails = {};
             this.MWwz(gamertag, platform).then(data => {
@@ -486,7 +494,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWfriends = function(gamertag, platform = config.platform) {
+    module.MWfriends = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
             if (platform === "battle") reject(`Battlenet friends are not supported. Try a different platform.`);
@@ -499,7 +507,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWWzfriends = function(gamertag, platform = config.platform) {
+    module.MWWzfriends = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
             if (platform === "battle") reject(`Battlenet friends are not supported. Try a different platform.`);
@@ -512,10 +520,11 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWstats = function(gamertag, platform = config.platform) {
+    module.MWstats = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
-            gamertag = _helpers.cleanClientName(gamertag);let lookupType = "gamer";
+            gamertag = _helpers.cleanClientName(gamertag);
+            let lookupType = "gamer";
             if (platform === "uno") lookupType = "id";
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             let urlInput = _helpers.buildUri(`stats/cod/v1/title/mw/platform/${platform}/${lookupType}/${gamertag}/profile/type/mp`);
@@ -524,10 +533,11 @@ module.exports = function(config = {}) {
     };
 
 
-    module.MWwzstats = function(gamertag, platform = config.platform) {
+    module.MWwzstats = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
-            gamertag = _helpers.cleanClientName(gamertag);let lookupType = "gamer";
+            gamertag = _helpers.cleanClientName(gamertag);
+            let lookupType = "gamer";
             if (platform === "uno") lookupType = "id";
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             let urlInput = _helpers.buildUri(`stats/cod/v1/title/mw/platform/${platform}/${lookupType}/${gamertag}/profile/type/wz`);
@@ -535,7 +545,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWweeklystats = function(gamertag, platform = config.platform) {
+    module.MWweeklystats = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             weeklyStats = {};
             this.MWstats(gamertag, platform).then((data) => {
@@ -548,7 +558,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWloot = function(gamertag, platform = config.platform) {
+    module.MWloot = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
             gamertag = _helpers.cleanClientName(gamertag);
@@ -560,7 +570,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWAnalysis = function(gamertag, platform = config.platform) {
+    module.MWAnalysis = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
             gamertag = _helpers.cleanClientName(gamertag);
@@ -570,7 +580,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWMapList = function(platform = config.platform) {
+    module.MWMapList = function (platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             let urlInput = _helpers.buildUri(`ce/v1/title/mw/platform/${platform}/gameType/mp/communityMapData/availability`);
@@ -578,7 +588,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWFullMatchInfomp = function(matchId, platform = config.platform) {
+    module.MWFullMatchInfomp = function (matchId, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             let urlInput = _helpers.buildUri(`crm/cod/v2/title/mw/platform/${platform}/fullMatch/mp/${matchId}/en`);
@@ -586,7 +596,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.MWFullMatchInfowz = function(matchId, platform = config.platform) {
+    module.MWFullMatchInfowz = function (matchId, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             let urlInput = _helpers.buildUri(`crm/cod/v2/title/mw/platform/${platform}/fullMatch/wz/${matchId}/en`);
@@ -595,7 +605,7 @@ module.exports = function(config = {}) {
     };
 
     //CW
-    module.CWmp = function(gamertag, platform = config.platform) {
+    module.CWmp = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for CW. Try `battle` instead.");
             gamertag = _helpers.cleanClientName(gamertag);
@@ -607,7 +617,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.CWloot = function(gamertag, platform = config.platform) {
+    module.CWloot = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
             gamertag = _helpers.cleanClientName(gamertag);
@@ -619,7 +629,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.CWAnalysis = function(gamertag, platform = config.platform) {  //could be v1
+    module.CWAnalysis = function (gamertag, platform = config.platform) { //could be v1
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for MW. Try `battle` instead.");
             gamertag = _helpers.cleanClientName(gamertag);
@@ -629,7 +639,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.CWMapList = function(platform = config.platform) {
+    module.CWMapList = function (platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             let urlInput = _helpers.buildUri(`ce/v1/title/cw/platform/${platform}/gameType/mp/communityMapData/availability`);
@@ -637,10 +647,11 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.CWcombatmp = function(gamertag, platform = config.platform) {
+    module.CWcombatmp = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for CW. Try `battle` instead.");
-            gamertag = _helpers.cleanClientName(gamertag);let lookupType = "gamer";
+            gamertag = _helpers.cleanClientName(gamertag);
+            let lookupType = "gamer";
             if (platform === "uno") lookupType = "id";
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             let urlInput = _helpers.buildUri(`crm/cod/v2/title/cw/platform/${platform}/${lookupType}/${gamertag}/matches/mp/start/0/end/0/details`);
@@ -648,10 +659,11 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.CWcombatdate = function(gamertag, start = 0, end = 0, platform = config.platform) {
+    module.CWcombatdate = function (gamertag, start = 0, end = 0, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "steam") reject("Steam Doesn't exist for CW. Try `battle` instead.");
-            gamertag = _helpers.cleanClientName(gamertag);let lookupType = "gamer";
+            gamertag = _helpers.cleanClientName(gamertag);
+            let lookupType = "gamer";
             if (platform === "uno") lookupType = "id";
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             let urlInput = _helpers.buildUri(`crm/cod/v2/title/cw/platform/${platform}/${lookupType}/${gamertag}/matches/mp/start/${start}/end/${end}/details`);
@@ -659,7 +671,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.CWFullMatchInfo = function(matchId, platform = config.platform) {
+    module.CWFullMatchInfo = function (matchId, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             let urlInput = _helpers.buildUri(`crm/cod/v2/title/cw/platform/${platform}/fullMatch/mp/${matchId}/en`);
@@ -668,7 +680,7 @@ module.exports = function(config = {}) {
     };
 
     //https://my.callofduty.com/api/papi-client/inventory/v1/title/cw/platform/psn/purchasable/public/en
-    module.GetPurchasablePublic = function() {
+    module.GetPurchasablePublic = function () {
         return new Promise((resolve, reject) => {
             let urlInput = _helpers.buildUri(`inventory/v1/title/cw/platform/psn/purchasable/public/en`);
             _helpers.sendRequest(urlInput).then(data => resolve(data)).catch(e => reject(e));
@@ -676,14 +688,14 @@ module.exports = function(config = {}) {
     };
 
     //https://my.callofduty.com/api/papi-client/inventory/v1/title/cw/bundle/22497100/en
-    module.getBundleInformation = function(title, bundleId) {
+    module.getBundleInformation = function (title, bundleId) {
         return new Promise((resolve, reject) => {
             let urlInput = _helpers.buildUri(`inventory/v1/title/${title}/bundle/${bundleId}/en`);
             _helpers.sendRequest(urlInput).then(data => resolve(data)).catch(e => reject(e));
         });
     };
 
-    module.friendFeed = function(gamertag, platform = config.platform) {
+    module.friendFeed = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             gamertag = _helpers.cleanClientName(gamertag);
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
@@ -692,28 +704,28 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.getEventFeed = function() {
+    module.getEventFeed = function () {
         return new Promise((resolve, reject) => {
             let urlInput = _helpers.buildUri(`userfeed/v1/friendFeed/rendered/en/${ssoCookie}`);
             _helpers.sendRequest(urlInput).then(data => resolve(data)).catch(e => reject(e));
         });
     };
 
-    module.getLoggedInIdentities = function() {
+    module.getLoggedInIdentities = function () {
         return new Promise((resolve, reject) => {
             let urlInput = _helpers.buildUri(`crm/cod/v2/identities/${ssoCookie}`);
             _helpers.sendRequest(urlInput).then(data => resolve(data)).catch(e => reject(e));
         });
     };
 
-    module.getLoggedInUserInfo = function() {
+    module.getLoggedInUserInfo = function () {
         return new Promise((resolve, reject) => {
             let urlInput = _helpers.buildProfileUri(`cod/userInfo/${ssoCookie}`);
             _helpers.sendRequestUserInfoOnly(urlInput).then(data => resolve(data)).catch(e => reject(e));
         });
     };
 
-    module.FuzzySearch = function(query, platform = config.platform) {
+    module.FuzzySearch = function (query, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "battle" || platform == "uno" || platform == "all") query = _helpers.cleanClientName(query);
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
@@ -722,7 +734,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.getBattlePassInfo = function(gamertag, platform = config.platform) {
+    module.getBattlePassInfo = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "battle" || platform == "uno" || platform === "acti") gamertag = _helpers.cleanClientName(gamertag);
             let lookupType = "gamer";
@@ -734,7 +746,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.getCodPoints = function(gamertag, platform = config.platform) {
+    module.getCodPoints = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             gamertag = _helpers.cleanClientName(gamertag);
@@ -743,7 +755,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.getBattlePassLoot = function(season, platform = config.platform) {
+    module.getBattlePassLoot = function (season, platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             let urlInput = _helpers.buildUri(`loot/title/mw/platform/${platform}/list/loot_season_${season}/en`);
@@ -751,7 +763,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.getPurchasable = function(platform = config.platform) {
+    module.getPurchasable = function (platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             let urlInput = _helpers.buildUri(`inventory/v1/title/mw/platform/${platform}/purchasable`);
@@ -759,7 +771,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.purchaseItem = function(gamertag, item = "battle_pass_upgrade_bundle_4", platform = config.platform) {
+    module.purchaseItem = function (gamertag, item = "battle_pass_upgrade_bundle_4", platform = config.platform) {
         return new Promise((resolve, reject) => {
             if (platform === "uno" || platform === "acti") platform = this.platforms["uno"];
             gamertag = _helpers.cleanClientName(gamertag);
@@ -768,14 +780,14 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.getGiftableFriends = function(unoId, itemSku = "432000") {
+    module.getGiftableFriends = function (unoId, itemSku = "432000") {
         return new Promise((resolve, reject) => {
             let urlInput = _helpers.buildUri(`gifting/v1/title/mw/platform/uno/${unoId}/sku/${itemSku}/giftableFriends`);
             _helpers.sendRequest(urlInput).then(data => resolve(data)).catch(e => reject(e));
         });
     };
 
-    module.sendGift = function(gamertag, recipientUnoId, senderUnoId, itemSku = "432000", sendingPlatform = config.platform, platform = config.platform) {
+    module.sendGift = function (gamertag, recipientUnoId, senderUnoId, itemSku = "432000", sendingPlatform = config.platform, platform = config.platform) {
         return new Promise((resolve, reject) => {
             let data = {
                 recipientUnoId: recipientUnoId,
@@ -789,7 +801,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.ConnectedAccounts = function(gamertag, platform = config.platform) {
+    module.ConnectedAccounts = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             gamertag = _helpers.cleanClientName(gamertag);
             let lookupType = "gamer";
@@ -800,7 +812,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.Presence = function(gamertag, platform = config.platform) {
+    module.Presence = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             gamertag = _helpers.cleanClientName(gamertag);
             let urlInput = _helpers.buildUri(`crm/cod/v2/friends/platform/${platform}/gamer/${gamertag}/presence/1/${ssoCookie}`);
@@ -808,7 +820,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.Settings = function(gamertag, platform = config.platform) {
+    module.Settings = function (gamertag, platform = config.platform) {
         return new Promise((resolve, reject) => {
             gamertag = _helpers.cleanClientName(gamertag);
             let urlInput = _helpers.buildUri(`preferences/v1/platform/${platform}/gamer/${gamertag}/list`);
@@ -816,7 +828,7 @@ module.exports = function(config = {}) {
         });
     };
 
-    module.isLoggedIn = function() {
+    module.isLoggedIn = function () {
         return loggedIn;
     };
 
