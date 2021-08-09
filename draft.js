@@ -213,14 +213,14 @@ module.exports = function (config = {}) {
                 })
             );
 
-            puppeteer.launch({ headless: headless, args: ['--no-sandbox'] }).then(async browser => {
+            puppeteer.launch({ headless: headless, args: ["--no-sandbox","--disable-setuid-sandbox"] }).then(async browser => {
                 const page = await browser.newPage();
                 await page.setDefaultNavigationTimeout(120000);
                 await page.goto('https://profile.callofduty.com/cod/login')
-            
+
                 await page.type('#username', username, { delay: 100 });
                 await page.type('#password', password, { delay: 100 });
-            
+
                 await page.solveRecaptchas();
 
                 await Promise.all([
